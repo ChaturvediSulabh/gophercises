@@ -2,16 +2,21 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"regexp"
 	"strings"
 )
 
 func main() {
 	fileName := "ngi.nx .Log\\/?"
-	stdFileName(fileName)
+	fileName, err := stdFileName(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("File:", fileName)
 }
 
-func stdFileName(fileName string) {
+func stdFileName(fileName string) (string, error) {
 	newFileName := strings.ToLower(fileName)
 	slOfNewFileName := strings.Split(newFileName, ".")
 	fileExt := slOfNewFileName[len(slOfNewFileName)-1]
@@ -27,5 +32,5 @@ func stdFileName(fileName string) {
 	bsOfNewFileName := re.ReplaceAll([]byte(newFileName), []byte(``))
 	newFileName = string(bsOfNewFileName)
 	newFileName = strings.Title(newFileName) + "." + fileExt
-	fmt.Println(newFileName)
+	return fmt.Sprintf("%s", newFileName), nil
 }
