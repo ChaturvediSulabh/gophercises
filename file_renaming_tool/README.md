@@ -1,4 +1,4 @@
-# A file renaming tool, works recursively in a give Dir
+# A file renaming tool, works recursively in a given Directory
 
 ## Given a filename, it standardize the fileName
 
