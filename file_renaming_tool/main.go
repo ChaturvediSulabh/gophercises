@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -16,23 +16,27 @@ func main() {
 	flag.Parse()
 
 	dir := filepath.Dir(dirPath)
-	files, err := ioutil.ReadDir(dir)
+	err := filepath.Walk(dir,
+		func(dir string, info os.FileInfo, err error) error {
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			fileName := info.Name()
+			fileType := "Directory"
+			if !info.IsDir() {
+				fileType = "File"
+				fileName, err = stdFileName(fileName)
+				if err != nil {
+					log.Fatal(err)
+				}
+				fileName = fileName + "_" + strings.ReplaceAll(info.ModTime().Local().String(), " ", "_")
+			}
+			fmt.Println(fileType + ": " + fileName)
+			return nil
+		})
 	if err != nil {
 		log.Fatal(err)
-	}
-	for _, file := range files {
-		fileName := file.Name()
-		fileType := "File"
-		modTime := file.ModTime()
-		if file.IsDir() {
-			fileType = "Directory"
-		}
-		fileName, err := stdFileName(fileName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		fileName = fileName + "_" + strings.ReplaceAll(modTime.Local().String(), " ", "_")
-		fmt.Println(fileType, ":", fileName)
 	}
 }
 
@@ -47,6 +51,7 @@ func stdFileName(fileName string) (string, error) {
 	fileExt = string(bsOfFileExt)
 	if fileExt == "" || len(slOfNewFileName) == 1 {
 		fileExt = "txt"
+		newFileName = slOfNewFileName[0]
 	}
 
 	bsOfNewFileName := re.ReplaceAll([]byte(newFileName), []byte(`_`))
