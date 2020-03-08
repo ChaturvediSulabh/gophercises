@@ -1,19 +1,37 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"regexp"
 	"strings"
 )
 
 func main() {
-	fileName := "ngi.nx .Log\\/?"
-	fileName, err := stdFileName(fileName)
+	var dir string
+	flag.StringVar(&dir, "dir", ".", "Name of a Directory")
+	flag.Parse()
+
+	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("File:", fileName)
+	for _, file := range files {
+		fileName := file.Name()
+		fileType := "File"
+		modTime := file.ModTime()
+		if file.IsDir() == true {
+			fileType = "Directory"
+		}
+		fileName, err := stdFileName(fileName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fileName = fileName + "_" + strings.ReplaceAll(modTime.Local().String(), " ", "_")
+		fmt.Println(fileType, ":", fileName)
+	}
 }
 
 func stdFileName(fileName string) (string, error) {
@@ -29,7 +47,7 @@ func stdFileName(fileName string) (string, error) {
 		fileExt = "txt"
 	}
 
-	bsOfNewFileName := re.ReplaceAll([]byte(newFileName), []byte(``))
+	bsOfNewFileName := re.ReplaceAll([]byte(newFileName), []byte(`_`))
 	newFileName = string(bsOfNewFileName)
 	newFileName = strings.Title(newFileName) + "." + fileExt
 	return fmt.Sprintf("%s", newFileName), nil
