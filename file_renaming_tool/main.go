@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
 
 func main() {
-	var dir string
-	flag.StringVar(&dir, "dir", ".", "Name of a Directory")
+	var dirPath string
+	flag.StringVar(&dirPath, "pathToDir", ".", "full path to a directory")
 	flag.Parse()
 
+	dir := filepath.Dir(dirPath)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
@@ -22,7 +24,7 @@ func main() {
 		fileName := file.Name()
 		fileType := "File"
 		modTime := file.ModTime()
-		if file.IsDir() == true {
+		if file.IsDir() {
 			fileType = "Directory"
 		}
 		fileName, err := stdFileName(fileName)
