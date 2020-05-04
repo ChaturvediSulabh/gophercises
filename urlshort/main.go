@@ -5,15 +5,24 @@ import (
 	"net/http"
 )
 
-var url string = "https://www.digitalocean.com/community/tutorials/importing-packages-in-go"
-
 func main() {
-	http.HandleFunc("/importing-packages-in-go", handler)
+	urlMap := map[string]string{
+		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
+		"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
+	}
+	mapHandler := mapHandler(urlMap)
+	for k := range urlMap {
+		http.HandleFunc(k, mapHandler)
+	}
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/importing-packages-in-go" {
-		http.Redirect(w, r, url, http.StatusFound)
+func mapHandler(urlMap map[string]string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		for k, v := range urlMap {
+			if r.URL.Path == k {
+				http.Redirect(w, r, v, http.StatusFound)
+			}
+		}
 	}
 }
