@@ -19,12 +19,16 @@ func main() {
 
 func mapHandler(urlMap map[string]string, fallback http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		urlExists := false
 		for k, v := range urlMap {
 			if r.URL.Path == k {
+				urlExists = true
 				http.Redirect(w, r, v, http.StatusFound)
 			}
 		}
-		fallback.ServeHTTP(w, r)
+		if urlExists == false {
+			fallback.ServeHTTP(w, r)
+		}
 	})
 }
 
