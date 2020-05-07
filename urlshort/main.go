@@ -1,29 +1,32 @@
 package main
 
 import (
-	"flag"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
-	"gopkg.in/yaml.v2"
+	"github.com/streadway/amqp"
 )
 
-func main() {
-	config := flag.String("urlConfig", "./config.yaml", "Config File containing all routes and their associated urls. As, for route urlshort-godoc, its redirect is https://godoc.org/github.com/gophercises/urlshort")
-	flag.Parse()
-
-	yamlHandler, err := yamlHandler(config, fallback())
-	if err != nil {
-		log.Panic(err)
-	}
-	log.Fatal(http.ListenAndServe(":8080", yamlHandler))
+//Config is slice of struct of route and their respective Redirects
+type Config struct {
+	URLMap map[string]string
 }
 
-func mapHandler(urlMap map[string]string, fallback http.Handler) http.HandlerFunc {
+func main() {
+	var c Config
+	conf, err := c.amqpHandler()
+	failOnError(err)
+	handler := redirectHandler(conf, fallback())
+	log.Fatal(http.ListenAndServe(":8080", handler))
+}
+
+func redirectHandler(config *Config, fallback http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		urlExists := false
-		for k, v := range urlMap {
+		for k, v := range config.URLMap {
 			if r.URL.Path == k {
 				urlExists = true
 				http.Redirect(w, r, v, http.StatusFound)
@@ -41,35 +44,35 @@ func fallback() http.Handler {
 	})
 }
 
-func yamlHandler(config *string, fallback http.Handler) (http.HandlerFunc, error) {
-	parsedYAML, err := parseYAML(*config)
-	if err != nil {
-		log.Panicln(err)
-	}
-	urlMap := buildMap(parsedYAML)
-	return mapHandler(urlMap, fallback), nil
-}
+func (conf *Config) amqpHandler() (*Config, error) {
+	conn, err := amqp.Dial(os.Getenv("RABBITMQ_CONNECTION_STRING"))
+	failOnError(err)
+	defer conn.Close()
 
-type yamlConfig []struct {
-	Route string `yaml:"route"`
-	URL   string `yaml:"url"`
-}
+	ch, err := conn.Channel()
+	failOnError(err)
+	defer ch.Close()
 
-func parseYAML(filePath string) (yamlConfig, error) {
-	content, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return nil, err
-	}
+	q, err := ch.QueueDeclare(os.Getenv("RABBITMQ_URLSHORT_QUEUE_NAME"), false, false, false, false, nil)
+	failOnError(err)
 
-	var conf yamlConfig
-	err = yaml.Unmarshal(content, &conf)
+	msgs, err := ch.Consume(q.Name, "", false, false, false, false, nil)
+	failOnError(err)
+
+	go func() {
+		for msg := range msgs {
+			fmt.Println("message received: " + string(msg.Body))
+			slOfMsg := strings.Split(string(msg.Body), ";")
+			conf.URLMap = make(map[string]string)
+			conf.URLMap[slOfMsg[0]] = slOfMsg[1]
+		}
+	}()
+	fmt.Println(conf)
 	return conf, nil
 }
 
-func buildMap(data yamlConfig) map[string]string {
-	urlMap := make(map[string]string)
-	for _, v := range data {
-		urlMap[v.Route] = v.URL
+func failOnError(err error) {
+	if err != nil {
+		log.Panic(err)
 	}
-	return urlMap
 }
