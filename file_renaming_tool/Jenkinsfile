@@ -1,12 +1,11 @@
-pipeline{
+pipeline {
   agent {
-    docker {image 'golang'}
+    docker {cimage 'golang' }
   }
   stages{
     stage('build'){
       steps {
           sh 'go version'
-        }
       }
     }
   }
